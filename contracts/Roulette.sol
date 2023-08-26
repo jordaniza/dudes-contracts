@@ -16,8 +16,15 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 number;
     }
 
+    enum Status {
+        NOT_STARTED,
+        OPEN,
+        LOCKED,
+        CLOSED
+    }
+
     struct Round {
-        bool isOpen;
+        Status status;
         uint256 winningNumber;
     }
 
@@ -38,7 +45,7 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// ======= MODIFIERS =======
 
     modifier roundOpen() {
-        require(rounds[round].isOpen, "Round is not open");
+        require(rounds[round].status == Status.OPEN, "Round is not open");
         _;
     }
 
@@ -62,7 +69,7 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function openRound() external onlyOwner {
-        rounds[round].isOpen = true;
+        rounds[round].status = Status.OPEN;
     }
 
     function setMaxBet(uint256 _maxBet) external onlyOwner {
@@ -77,19 +84,29 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         bettingToken.transfer(_to, _amount);
     }
 
+    function requestSpin() external onlyOwner {
+        rounds[round].status = Status.LOCKED;
+        // TODO: request spin from oracle
+    }
+
+    function setSpinResult() external onlyOwner {
+        rounds[round].status = Status.CLOSED;
+        // TODO: set spin result from oracle
+    }
+
     /// ========= USER FUNCTIONS =========
 
     function _placeBet(int256 _amount, uint256 _number, address _gambler) internal {
         int256 newAmount = userBetsByRound[round][_gambler][_number].toInt256() + _amount;
 
-        if (uint(newAmount) > maxBet) revert("Bet > maxBet");
+        if (uint256(newAmount) > maxBet) revert("Bet > maxBet");
         else if (newAmount < 0) revert("Bet < 0");
 
         userBetsByRound[round][_gambler][_number] = uint256(newAmount);
     }
 
     function placeBet(Bet[] memory _bets, string memory _strategy) external roundOpen {
-        int totalBet = 0; 
+        int256 totalBet = 0;
         for (uint256 i = 0; i < _bets.length; i++) {
             int256 amount = _bets[i].amount;
             uint256 number = _bets[i].number;
@@ -102,10 +119,10 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit BetPlaced(msg.sender, round, _bets, _strategy);
     }
 
-    function collectWinnings(address _gambler, uint _round) external {
-        uint winningNumber = rounds[_round].winningNumber;
+    function collectWinnings(address _gambler, uint256 _round) external {
+        uint256 winningNumber = rounds[_round].winningNumber;
         uint256 winnings = userBetsByRound[_round][_gambler][winningNumber];
-        
+
         require(winnings > 0, "No winnings");
         userBetsByRound[_round][_gambler][winningNumber] = 0;
 
