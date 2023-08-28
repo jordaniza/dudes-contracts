@@ -15,7 +15,6 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         int256 amount;
         uint256 number;
     }
-
     enum Status {
         NOT_STARTED,
         OPEN,
@@ -26,11 +25,12 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     struct Round {
         Status status;
         uint256 winningNumber;
+        // number => amount
+        mapping (uint256 => uint256) totalBets;
     }
 
     uint256 round;
     uint256 maxBet;
-
     IERC20 bettingToken;
 
     // round => user => number => amount
@@ -56,6 +56,7 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
+    /// @notice some helpers text
     function initialize(address _bettingToken) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -97,11 +98,17 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// ========= USER FUNCTIONS =========
 
     function _placeBet(int256 _amount, uint256 _number, address _gambler) internal {
+        // check the bet is within the max bet for the user
         int256 newAmount = userBetsByRound[round][_gambler][_number].toInt256() + _amount;
-
         if (uint256(newAmount) > maxBet) revert("Bet > maxBet");
         else if (newAmount < 0) revert("Bet < 0");
 
+        // check the bet is within the max bet for the round
+        int newTotalBet = rounds[round].totalBets[_number].toInt256() + _amount;        
+        require(uint(newTotalBet) * 36 <= bettingToken.balanceOf(address(this)), "Cannot payout winnings");
+
+        // update the state
+        rounds[round].totalBets[_number] = uint256(newTotalBet);
         userBetsByRound[round][_gambler][_number] = uint256(newAmount);
     }
 

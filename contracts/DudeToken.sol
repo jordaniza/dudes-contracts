@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
@@ -13,6 +13,7 @@ contract Dude is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, Owna
     constructor() {
         _disableInitializers();
     }
+
 
     function initialize() initializer public {
         __ERC20_init("Dude", "DOOD");
