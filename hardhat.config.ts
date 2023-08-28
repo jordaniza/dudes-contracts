@@ -1,10 +1,15 @@
 import { HardhatUserConfig } from "hardhat/config";
 
 import "@nomicfoundation/hardhat-toolbox";
+import "@typechain/hardhat";
+
+// can't use both of these to deploy so comment if switching between zk and hh tests
+import "@openzeppelin/hardhat-upgrades";
+// import "@matterlabs/hardhat-zksync-upgradable";
+
 import "@matterlabs/hardhat-zksync-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
-import "@typechain/hardhat";
 
 const zkSyncTestnet = process.env.NODE_ENV == "test"
   ? {
@@ -29,7 +34,7 @@ const config: HardhatUserConfig = {
   // this appeats to have some issues with causing LSP support
   // I think possibly becse we need to have the server running
   // you can uncomment this during development of contracts
-  // defaultNetwork: "zkSyncTestnet",
+  defaultNetwork: "zkSyncTestnet",
   networks: {
     hardhat: {
       zksync: false,

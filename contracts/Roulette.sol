@@ -1,20 +1,28 @@
 pragma solidity 0.8.17;
 
+/// dependencies
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SeedReceiverUpgradeable} from "./SeedReceiver.sol";
 
-/// safecast
+/// interfaces
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/ISeeder.sol";
+
+/// libraries
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 
-contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+import "hardhat/console.sol";
+
+contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable, SeedReceiverUpgradeable {
     using SafeCastUpgradeable for uint256;
 
     struct Bet {
         int256 amount;
         uint256 number;
     }
+
     enum Status {
         NOT_STARTED,
         OPEN,
@@ -26,18 +34,18 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Status status;
         uint256 winningNumber;
         // number => amount
-        mapping (uint256 => uint256) totalBets;
+        mapping(uint256 => uint256) totalBets;
     }
 
-    uint256 round;
-    uint256 maxBet;
-    IERC20 bettingToken;
+    uint256 public round;
+    uint256 public maxBet;
+    IERC20 public bettingToken;
 
     // round => user => number => amount
-    mapping(uint256 => mapping(address => mapping(uint256 => uint256))) userBetsByRound;
+    mapping(uint256 => mapping(address => mapping(uint256 => uint256))) public userBetsByRound;
 
     // idx is the round
-    Round[] rounds;
+    Round[] public rounds;
 
     event BetPlaced(address indexed gambler, uint256 indexed round, Bet[] bets, string strategy);
     event CollectedWinnings(address indexed gambler, uint256 indexed round, uint256 winnings);
@@ -57,19 +65,25 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @notice some helpers text
-    function initialize(address _bettingToken) public initializer {
+    function initialize(address _bettingToken, address _seeder) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        __SeedReciever_init(_seeder);
         bettingToken = IERC20(_bettingToken);
+        // initialize the first round to defaults
+        rounds.push();
     }
 
     /// ========= ADMIN FUNCTIONS =========
 
     function nextRound() external onlyOwner {
+        require(rounds[round].status == Status.CLOSED, "Round is not closed");
         round++;
+        rounds.push();
     }
 
     function openRound() external onlyOwner {
+        require(rounds[round].status == Status.NOT_STARTED, "Round cannot be opened");
         rounds[round].status = Status.OPEN;
     }
 
@@ -82,17 +96,21 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function withdraw(address _to, uint256 _amount) external onlyOwner {
+        /// todo: should we be able to withdraw if this would cause contract to be unable to pay out winnings?
         bettingToken.transfer(_to, _amount);
     }
 
-    function requestSpin() external onlyOwner {
+    function requestSpin(uint256 _gasLimit) external onlyOwner {
         rounds[round].status = Status.LOCKED;
-        // TODO: request spin from oracle
+        _requestRandomNumber(_gasLimit);
     }
 
     function setSpinResult() external onlyOwner {
+        // todo: could have a valid range check here
+        require(latestRandomResult != bytes32(""), "No spin result");
         rounds[round].status = Status.CLOSED;
-        // TODO: set spin result from oracle
+        rounds[round].winningNumber = uint256(latestRandomResult) % 37;
+        latestRandomResult = bytes32("");
     }
 
     /// ========= USER FUNCTIONS =========
@@ -104,8 +122,10 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         else if (newAmount < 0) revert("Bet < 0");
 
         // check the bet is within the max bet for the round
-        int newTotalBet = rounds[round].totalBets[_number].toInt256() + _amount;        
-        require(uint(newTotalBet) * 36 <= bettingToken.balanceOf(address(this)), "Cannot payout winnings");
+        // not sure it makes sense to do this...you'd have to save the total payouts that are unclaimed
+        // from previous rounds
+        int256 newTotalBet = rounds[round].totalBets[_number].toInt256() + _amount;
+        require(uint256(newTotalBet) * 36 <= bettingToken.balanceOf(address(this)), "Cannot payout winnings");
 
         // update the state
         rounds[round].totalBets[_number] = uint256(newTotalBet);
@@ -117,7 +137,7 @@ contract Roulette is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         for (uint256 i = 0; i < _bets.length; i++) {
             int256 amount = _bets[i].amount;
             uint256 number = _bets[i].number;
-            require(number <= 36, "Number must be between 0 and 36");
+            require(number <= 36, "Invalid number");
             _placeBet(amount, number, msg.sender);
             totalBet += amount;
         }
