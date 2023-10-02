@@ -7,14 +7,19 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract Dude is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, OwnableUpgradeable,  UUPSUpgradeable {
+contract Dude is
+    Initializable,
+    ERC20Upgradeable,
+    ERC20BurnableUpgradeable,
+    OwnableUpgradeable,
+    UUPSUpgradeable
+{
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-
-    function initialize() initializer public {
+    function initialize() public initializer {
         __ERC20_init("Dude", "DOOD");
         __ERC20Burnable_init();
         __Ownable_init();
@@ -25,9 +30,7 @@ contract Dude is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, Owna
         _mint(to, amount);
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        onlyOwner
-        override
-    {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
 }

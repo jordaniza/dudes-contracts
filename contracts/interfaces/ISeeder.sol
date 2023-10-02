@@ -19,14 +19,12 @@ interface IRandomizerZks {
     function registerValidator(address _validator) external;
 
     function unRegisterValidator(address _validator) external;
-    
-    function registerClient(address _client) external; 
+
+    function registerClient(address _client) external;
 
     function unRegisterClient(address _client) external;
 
-    function request(
-        uint256 _callbackGasLimit
-    ) external returns (uint256);
+    function request(uint256 _callbackGasLimit) external returns (uint256);
 
     function requestFast(
         uint256 _callbackGasLimit,
@@ -55,6 +53,7 @@ interface IRandomizerZks {
     ) external view returns (uint256);
 
     function clientDeposit(address _client) external payable;
+
     function clientWithdrawTo(address _reciver, uint _amount) external payable;
 
     function getFeeStats(

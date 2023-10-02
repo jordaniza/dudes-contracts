@@ -7,13 +7,14 @@
   "devDependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
-    "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
-    "@matterlabs/hardhat-zksync-solc": "^0.4.0",
-    "@matterlabs/hardhat-zksync-upgradable": "^0.1.3",
-    "@matterlabs/hardhat-zksync-verify": "^0.1.8",
+    "@matterlabs/hardhat-zksync-deploy": "latest",
+    "@matterlabs/hardhat-zksync-solc": "latest",
+    "@matterlabs/hardhat-zksync-upgradable": "latest",
+    "@matterlabs/hardhat-zksync-verify": "^0.2.0",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@nomicfoundation/hardhat-verify": "^1.1.1",
     "@nomiclabs/hardhat-ethers": "^2.2.2",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@openzeppelin/contracts": "^4.9.3",
@@ -34,11 +35,12 @@
     "ts-node": "^10.9.1",
     "typechain": "^8.3.1",
     "typescript": "^5.2.2",
-    "zksync-web3": "^0.14.3"
+    "zksync-web3": "latest"
   },
   "scripts": {
-    "test:zk": "NODE_ENV=test hardhat test --network zkSyncTestnet 'test/zk/**/*.ts'",
-    "test:hh": "NODE_ENV=test hardhat test --network hardhat \"test/hh/main.test.ts\"",
+    "coverage:hh": "USE_ZKEVM=false yarn hardhat coverage --network hardhat",
+    "test:zk": "USE_ZKEVM=true NODE_ENV=test yarn hardhat test --network zkSyncTestnet",
+    "test:hh": "USE_ZKEVM=false NODE_ENV=test hardhat test --network hardhat ",
     "deploy": "yarn hardhat deploy-zksync --script deploy-greeter.ts",
     "greet": "yarn hardhat deploy-zksync --script use-greeter.ts"
   }
